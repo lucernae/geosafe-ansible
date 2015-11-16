@@ -1,0 +1,30 @@
+---
+
+- name: Install necessary packages
+  become: yes
+  apt:
+    update_cache: yes
+    state: present
+    name: "{{ item }}"
+    force: yes
+  with_items:
+    - curl
+    - build-essential
+    - libxml2-dev
+    - libxslt1-dev
+    - libpq-dev
+    - zlib1g-dev
+    - python-dev
+    - python-imaging
+    - python-lxml
+    - python-pyproj
+    - python-shapely
+    - python-nose
+    - python-httplib2
+    - python-pip
+    - python-software-properties
+    - openjdk-7-jdk
+    - ant
+    - maven2
+    - git
+    - gettext

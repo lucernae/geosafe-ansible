@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# This script is executed as root user
+
+cd ~
+wget http://download.redis.io/redis-stable.tar.gz
+tar -xzf redis-stable.tar.gz
+cd redis-stable
+echo "Build redis..."
+echo "-------------------------------"
+echo ""
+make
+make test
+echo ""
+echp "-------------------------------"
+echo "Test redis..."
+echo "-------------------------------"
+echo ""
+make install
+
+echo ""
+echp "-------------------------------"
+echo "Install redis..."
+echo "-------------------------------"
+echo ""
+
+REDIS_PORT={{ redis_port }}
+
+
+echo "Install as daemon"
+
+mkdir /etc/redis /var/redis
+
+cp utils/redis_init_script /etc/init.d/redis_$REDIS_PORT
+
+sed -i s/REDISPORT=6379/REDISPORT=${REDIS_PORT}/g /etc/init.d/redis_$REDIS_PORT
+
+cp redis.conf /etc/redis/$REDIS_PORT.conf
+mkdir /var/redis/$REDIS_PORT
+
+sed -i s/daemonize no/daemonize yes/g /etc/redis/$REDIS_PORT.conf
+sed -i s/pidfile \/var\/run\/redis.pid/pidfile \/var\/run\/redis_$REDIS_PORT.pid/g /etc/redis/$REDIS_PORT.conf
+sed -i s/port 6379/port $REDIS_PORT/g /etc/redis/$REDIS_PORT.conf
+sed -i s/logfile ""/logfile "\/var\/log\/redis_$REDIS_PORT.log"/g /etc/redis/$REDIS_PORT.conf
+sed -i s/dir .\//dir \/var\/redis\/$REDIS_PORT/g /etc/redis/$REDIS_PORT.conf
+
+update-rc.d redis_$REDIS_PORT defaults
+
+echo "Set file permissions"
+
+chown redis:redis /etc/redis /var/redis
+chmod g+w -R /etc/redis /var/redis

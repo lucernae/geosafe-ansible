@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# This script is executed as root
+
+GEONODE_DIR={{ geonode_repo_dir }}/geonode
+
+ln -sf $GEONODE_DIR/scripts/celery/celeryd /etc/init.d/celeryd
+/usr/bin/cp -f $GEONODE_DIR/scripts/celery/celeryd-default /etc/default/celeryd
+
+sed -i s/CELERY_APP="geonode"/CELERY_APP="geosafe"/g /etc/default/celeryd
+sed -i s/CELERYD_CHDIR=""/CELERYD_CHDIR="$GEONODE_DIR"/g /etc/default/celeryd
+
+mkdir /var/log/celery /var/run/celery
+
+chown -R celery:celery /var/log/celery /var/run/celery
+chmod -R g+w /var/log/celery /var/run/celery

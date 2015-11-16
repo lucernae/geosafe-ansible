@@ -1,0 +1,44 @@
+---
+
+# User creations parts
+
+- name: Create users
+  become: yes
+  user:
+    name: redis
+    state: present
+
+# Package installation parts
+- name: Update apt
+  become: yes
+  apt:
+    update_cache: yes
+- name: Install necessary packages
+  become: yes
+  apt:
+    name: "{{ (item.pkg is undefined)|ternary(item, item.pkg) }}"
+    state: present
+    force: yes
+  when: item.dist is undefined and ansible_distribution == item.dist
+  with_items:
+    - curl
+    - wget
+    - build-essential
+    - tcl
+- name: Copy redis install script
+  become: yes
+  template:
+    src: install_redis.sh.j2
+    dest: ~/install_redis.sh
+- name: Install redis server
+  become: yes
+  shell: /bin/bash -c install_redis.sh >> ~/.install-redis.log
+  args:
+    chdir: ~
+    creates: ~/.install-redis.log
+- name: Run redis server
+  become: yes
+  service:
+    name: "redis_{{ redis_port }}"
+    enabled: yes
+    state: started

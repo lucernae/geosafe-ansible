@@ -1,0 +1,21 @@
+---
+
+- name: Clone InaSAFE Headless
+  git:
+    accept_hostkey: yes
+    repo: "{{ inasafe_headless_repo }}"
+    dest: "{{ inasafe_headless_repo_dir }}"
+    version: "{{ inasafe_headless_version }}"
+    depth: 1
+- name: Copy InaSAFE Headless install scripts
+  become: yes
+  template:
+    src: install_headless.sh.j2
+    dest: ~/install_headless.sh
+- name: Install InaSAFE Headless executable
+  become: yes
+  shell: /bin/bash -c install_headless.sh >> ~/.install-headless.log
+  args:
+    chdir: ~
+    creates: ~/.install-headless.log
+

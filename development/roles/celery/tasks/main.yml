@@ -1,0 +1,46 @@
+---
+
+# User creation parts
+
+- name: Create celery user
+  become: yes
+  user:
+    name: celery
+    state: present
+- name: Add geonode to celery group
+  become: yes
+  user:
+    name: geonode
+    groups: celery
+
+# Package installation parts
+- name: Update apt
+  become: yes
+  apt:
+    update_cache: yes
+- name: Install necessary packages
+  become: yes
+  pip:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - celery
+    - django-celery
+    - celery[redis]
+- name: Copy celery install scripts
+  become: yes
+  template:
+    src: install_celery.sh.j2
+    dest: ~/install_celery.sh
+- name: Install celery
+  become: yes
+  shell: /bin/bash -c install_celery.sh >> ~/.install-celery.log
+  args:
+    chdir: ~
+    creates: ~/.install-celery.log
+- name: Running a worker
+  become: yes
+  become_user: geonode
+  shell: celery multi restart worker1 -A geosafe --pidfile="/var/run/celery/%n.pid" --logfile="/var/log/celery/%n.log"
+  args:
+    chdir: "{{ geonode_repo_dir }}/geonode"

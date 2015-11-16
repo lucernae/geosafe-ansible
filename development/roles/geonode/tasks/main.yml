@@ -1,0 +1,146 @@
+---
+
+# User creation parts
+
+- name: Create geonode users
+  become: yes
+  user:
+    name: geonode
+    state: present
+
+# Package installation parts
+- name: Update apt
+  become: yes
+  apt:
+    update_cache: yes
+- name: Install necessary packages
+  become: yes
+  apt:
+    name: "{{ (item.pkg is undefined)|ternary(item, item.pkg) }}"
+    state: present
+    force: yes
+  when: item.dist is undefined and ansible_distribution == item.dist
+  with_items:
+    - curl
+    - build-essential
+    - libxml2-dev
+    - libxslt1-dev
+    - libpq-dev
+    - zlib1g-dev
+    - python-dev
+    - python-imaging
+    - python-lxml
+    - python-pyproj
+    - python-shapely
+    - python-nose
+    - python-httplib2
+    - python-pip
+    - python-software-properties
+    - openjdk-7-jdk
+    - ant
+    - maven2
+    - git
+    - gettext
+    - libjpeg-dev
+    - libgdal1h
+    - { pkg: libgdal-dev, dist: wheezy }
+    - python-gdal
+- name: Add Nodejs debian repo for static development
+  become: yes
+  shell: curl --silent --location https://deb.nodesource.com/setup_4.x | sudo bash - >> ~/.add-nodejs-repo.log
+  args:
+    creates: ~/.add-nodejs-repo.log
+- name: Install Nodejs package
+  become: yes
+  apt:
+    update_cache: yes
+    name: nodejs
+    state: present
+    force: yes
+- name: Check virtual environment installed
+  become: yes
+  become_user: geonode
+  stat:
+    path: ~/.virtualenvwrapper_env
+  register: venv_file_stat
+- name: Install virtual environment wrapper
+  become: yes
+  when: not venv_file_stat.stat.exists
+  pip:
+    name: virtualenvwrapper
+    state: present
+- name: Setup virtual environment in bashrc
+  become: yes
+  become_user: geonode
+  shell: "{{ item.command }}"
+  args:
+    creates: "{{ item.creates }}"
+  when: not venv_file_stat.stat.exists
+  with_items:
+    - { command: '/bin/bash -c ". /usr/local/bin/virtualenvwrapper.sh && mkvirtualenv geonode" >> ~/.create-virtualenv.log', creates: '~/.create-virtualenv.log' }
+    - { command: 'echo "source ~/.virtualenvwrapper_env" >> ~/.bashrc && cat .bashrc >> ~/.update-bashrc-virtualenv.log', creates: '~/.update-bashrc-virtualenv.log' }
+- name: Setup virtual environment
+  become: yes
+  become_user: geonode
+  when: not venv_file_stat.stat.exists
+  copy:
+    src: virtualenvwrapper_env.sh
+    dest: ~/.virtualenvwrapper_env
+- name: Git checkout geonode
+  git:
+    accept_hostkey: yes
+    repo: "{{ geonode_repo }}"
+    dest: "{{ geonode_repo_dir }}"
+    version: "{{ geonode_version }}"
+    depth: 1
+- name: Install NPM geonode related file
+  become: yes
+  become_user: geonode
+  shell: npm install --save-dev >> ~/.npm-geonode-install.log
+  args:
+    chdir: "{{ geonode_repo_dir }}/geonode/geonode/static/"
+    creates: ~/.npm-geonode-install.log
+- name: Install geonode to virtualenvwrapper
+  become: yes
+  become_user: geonode
+  pip:
+    name: geonode
+    state: present
+    chdir: "{{ geonode_repo_dir }}"
+    extra_args: -e
+- name: Copy osgeo install script
+  become: yes
+  become_user: geonode
+  copy:
+    src: install_osgeo_virtualenv.sh
+    dest: ~/install_osgeo_virtualenv.sh
+- name: Install osgeo in virtualenv
+  become: yes
+  become_user: geonode
+  shell: /bin/bash -c install_osgeo_virtualenv.sh >> ~/.install-osgeo-virtualenv.log
+  args:
+    chdir: ~
+    creates: ~/.install-osgeo-virtualenv.log
+
+# Configure celery for geondoe
+- name: Configure celery Broker URL
+  become: yes
+  template:
+    src: local_settings.py.j2
+    dest: "{{ geonode_repo_dir }}/geonode/geonode/local_settings.py"
+
+# Running geonode parts
+- name: Run paver setup
+  become: yes
+  become_user: geonode
+  shell: paver setup >> ~/.paver-setup.log
+  args:
+    chdir: "{{ geonode_repo_dir }}/geonode/"
+    creates: ~/.paver-setup.log
+- name: Restart paver
+  become: yes
+  become_user: geonode
+  shell: "{{ item }}"
+  with_items:
+    - paver stop
+    - paver start

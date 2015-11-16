@@ -1,0 +1,25 @@
+---
+
+- name: configure geonode server
+  hosts: geonode
+  vars:
+#    geonode_repo: git@github.com:lucernae/geonode.git
+
+# TODO: I don't have the means to accomodate using git protocol clone way by
+# supplying the passphrase needed for private key. But git protocol way should
+# work if the private key is not passphrase protected.
+
+# The http protocol clone way is working as expected.
+    geonode_repo: https://github.com/lucernae/geonode.git
+    geonode_repo_dir: ~/host/Projects/InaSAFE/
+    geonode_version: geosafe
+    redis_port: 6379
+    inasafe_headless_repo: https://github.com/lucernae/inasafe-headless.git
+    inasafe_headless_repo_dir: ~/host/Projects/InaSAFE/
+    inasafe_headless_version: develop
+    inasafe_version: develop_functionality
+  roles:
+    - { role: geonode }
+    - { role: redis }
+    - { role: celery }
+    - { role: inasafe-headless }

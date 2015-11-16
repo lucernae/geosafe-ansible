@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# This script will be executed as root
+
+ln -sf {{ inasafe_headless_repo_dir }}/inasafe-headless/deployment/scripts/inasafe-headless-docker /usr/local/bin/inasafe
+chmod +x /usr/local/bin/inasafe
+
+cd {{ inasafe_headless_repo_dir }}/inasafe-headless/deployment
+sh setup.sh checkout {{ inasafe_version }}
+
+make build
